@@ -1,4 +1,8 @@
 # path
+.vscode/
+build/
+output/
 
 # files
 xcvu3p.device
+route
