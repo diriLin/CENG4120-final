@@ -178,7 +178,173 @@ void Netlist::write(std::string output_file) {
         for (auto iter = pips.begin(); iter != pips.end(); iter++) {
             file << iter->parent->get_id() << " " << iter->child->get_id() << std::endl;
         }
+        file << std::endl;
     }
-    file << std::endl;
     file.close();
+    log() << "Finish writing." << std::endl;
+}
+
+
+
+void Netlist::read_result(std::string result_file) {
+    std::ifstream file(result_file);
+    if (!file.is_open()) {
+        log(LOG_ERROR) << "Fail to open result file " << result_file << std::endl;
+        assert_t(false);
+    }
+    log(LOG_INFO) << "Result file: " << result_file << std::endl;
+
+    std::string line;
+    int net_id;
+    std::string net_name;
+    int parent_id, child_id;
+    while (std::getline(file, line)) {
+        if (is_blank_line(line)) continue;
+
+        std::istringstream iss(line);
+        iss >> net_id >> net_name;
+        if (net_id < nets.size() && nets[net_id].get_name() == net_name) {
+            // start checking net
+            Net& net = nets[net_id];
+            while (std::getline(file, line)) {
+                // blank line. finish reading all pips of this net
+                if (is_blank_line(line)) break;
+
+                std::istringstream iss(line);
+                iss >> parent_id >> child_id;
+                if (parent_id >= device.num_nodes) {
+                    log(LOG_ERROR) << "No such node: " << parent_id << std::endl;
+                    continue;
+                }
+                if (child_id >= device.num_nodes) {
+                    log(LOG_ERROR) << "No such node: " << child_id << std::endl;
+                    continue;
+                }
+                Node* parent = &device.nodes[parent_id];
+                Node* child = &device.nodes[child_id];
+                PIP pip(parent, child);
+                net.add_pip(pip);
+            }
+        }
+    }
+}
+
+int Netlist::check_congestion_from_pips(bool reset_used_by_net_id) {
+    if (reset_used_by_net_id) {
+        for (Node& node: device.nodes) {
+            node.set_used_by_net_id(-1);
+        }
+    }
+
+    auto check_node = [&](Node* node, Net& net) {
+        if (node == nullptr) return;
+        int used_by_net_id = node->get_used_by_net_id();
+        if (used_by_net_id == -1) {
+            node->set_used_by_net_id(net.get_id());
+        } else if (used_by_net_id != net.get_id()) {
+            congested_node_ids.insert(node->get_id());
+        }
+    };
+
+    for (Net& net: nets) {
+        auto& pips = net.get_pips();
+        for (auto iter = pips.begin(); iter != pips.end(); iter++) {
+            check_node(iter->parent, net);
+            check_node(iter->child, net);
+        }
+    }
+
+    return congested_node_ids.size();
+}
+
+int Netlist::check_successfully_routed_nets_from_pips() {
+    int num_successfully_routed_nets = 0;
+    for (Net& net: nets) {
+        // use prev pointer may result in other problem.
+        std::unordered_map<Node*, Node*> child_to_parent;
+        auto& pips = net.get_pips();
+        for (auto iter = pips.begin(); iter != pips.end(); iter++) {
+            assert_t(iter->parent != nullptr);
+            assert_t(iter->child != nullptr);
+            bool find_child = false;
+            for (Node* child: iter->parent->get_children()) {
+                if (child == iter->child) {
+                    find_child = true;
+                    break;
+                }
+            }
+            if (!find_child) continue;
+            child_to_parent[iter->child] = iter->parent;
+        }
+
+        // check reachability of all sinks
+        bool is_successfully_routed_net = true;
+        Node* source_node = &device.nodes[net.get_source_node_id()];
+        for (int sink_node_id: net.get_sink_node_ids()) {
+            bool is_successfully_routed_sink = false;
+            Node* node = &device.nodes[sink_node_id];
+            int watch_dog = 100000;
+            while (watch_dog > 0) {
+                if (child_to_parent.find(node) == child_to_parent.end()) {
+                    // fail to find source node
+                    break;
+                }
+                Node* parent = child_to_parent.at(node);
+                if (parent == source_node) {
+                    // find source node
+                    is_successfully_routed_sink = true;
+                    break;
+                }
+                node = parent;
+                watch_dog--;
+            }
+            if (is_successfully_routed_sink == false) {
+                is_successfully_routed_net = false;
+                break;
+            }
+        }
+
+        if (is_successfully_routed_net) {
+            num_successfully_routed_nets++;
+        }
+    }
+
+    return num_successfully_routed_nets;
+}
+
+int Netlist::check_total_wirelength_from_pips() {
+    int total_wirelength = 0;
+    std::unordered_set<int> used_node_ids;
+    for (Net& net: nets) {
+        auto& pips = net.get_pips();
+        for (auto iter = pips.begin(); iter != pips.end(); iter++) {
+            assert_t(iter->parent != nullptr);
+            assert_t(iter->child != nullptr);
+            used_node_ids.insert(iter->parent->get_id());
+            used_node_ids.insert(iter->child->get_id());
+        }
+    }
+
+    for (auto iter = used_node_ids.begin(); iter != used_node_ids.end(); iter++) {
+        total_wirelength += device.nodes[*iter].get_length();
+    }
+    return total_wirelength;
+}
+
+void Netlist::evaluate_pips() {
+    int num_congested_nodes = check_congestion_from_pips(true);
+    int num_successfully_routed_nets = check_successfully_routed_nets_from_pips();
+    int total_wirelength = check_total_wirelength_from_pips();
+    log() << "# congested nodes: " << num_congested_nodes << std::endl;
+    log() << "# successfully routed nets: " << num_successfully_routed_nets << "/" << nets.size() << std::endl;
+    log() << "total wirelength: " << total_wirelength << std::endl;
+}
+
+void Netlist::evaluate(std::string result_file) {
+    for (Net& net: nets) {
+        net.clear_pips();
+    }
+
+    read_result(result_file);
+    evaluate_pips();
 }

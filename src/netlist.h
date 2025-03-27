@@ -2,6 +2,7 @@
 
 #include "global.h"
 #include "device.h"
+#include <algorithm>
 
 class Connection {
 private:
@@ -124,6 +125,7 @@ public:
     void set_ycenter(double ycenter_) {ycenter = ycenter_;}
     void add_connection_id(int connection_id) {connection_ids.emplace_back(connection_id);}
     void add_pip(PIP pip) {pips.insert(pip);}
+    void clear_pips() {pips.clear();}
 
     // Return: # connections using node (in this net)
     int count_user_connections(Node* node);
@@ -139,12 +141,23 @@ public:
 class Netlist {
 private:
     Device& device;
+    std::unordered_set<int> congested_node_ids;
+    
     void read(std::string netlist_file);
     void set_connections();
     void compute_bbox_and_center_of_nets();
+    // utils
+    bool is_blank_line(const std::string& line) {return line.empty() || std::all_of(line.begin(), line.end(), ::isspace);}
+    void read_result(std::string result_file);
+    int check_congestion_from_pips(bool reset_used_by_net_id);
+    int check_successfully_routed_nets_from_pips();
+    int check_total_wirelength_from_pips();
+    void evaluate_pips();
 public:
     std::vector<Net> nets;
     std::vector<Connection> connections;
     Netlist(Device& device_, std::string netlist_file): device(device_) {read(netlist_file);}
     void write(std::string output_file);
+    void evaluate(std::string result_file);
+    
 };
