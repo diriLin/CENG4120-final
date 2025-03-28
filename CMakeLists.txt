@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}")
 set(CMAKE_EXE_LINKER_FLAGS "-static")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
 project(FPGA_ROUTE)
 # find_package(Boost COMPONENTS serialization REQUIRED)
