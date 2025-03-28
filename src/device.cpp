@@ -73,6 +73,12 @@ NodeType Node::compute_node_type() {
     return intent_code == IntentCode::NODE_PINBOUNCE ? NodeType::PINBOUNCE : NodeType::WIRE;
 }
 
+void Node:: write_node_info(int id_, IntentCode intent_code_, int length_, int begin_x_, int begin_y_, int end_x_, int end_y_) {
+    id = id_; intent_code = intent_code_; length = length_; begin_x = begin_x_; begin_y = begin_y_; end_x = end_x_; end_y = end_y_;
+    base_cost = compute_base_cost();
+    node_type = compute_node_type();
+}
+
 // --------------Device---------------
 void Device::read(std::string device_file) {
     std::ifstream file(device_file);
@@ -88,31 +94,62 @@ void Device::read(std::string device_file) {
     std::getline(file, line);
     num_nodes = std::stoi(line);
     log() << "#nodes: " << num_nodes << std::endl;
-    nodes.reserve(num_nodes);
+
+    nodes.resize(num_nodes);
+    std::vector<std::string> node_lines;
+    std::vector<std::string> edge_lines;
+    node_lines.resize(num_nodes);
+    edge_lines.resize(num_nodes);
 
     // create nodes
-    int id, length, begin_x, begin_y, end_x, end_y;
-    int parent_id, child_id;
-    std::string intent_code;
+    log() << "Start reading node lines. " << std::endl;
     for (int i = 0; i < num_nodes; i++) {
-        std::getline(file, line);
-        std::istringstream iss(line);
-        iss >> id >> intent_code >> length >> begin_x >> begin_y >> end_x >> end_y;
-        nodes.emplace_back(id, str_to_ic[intent_code], length, begin_x, begin_y, end_x, end_y);
+        std::getline(file, node_lines[i]);
     }
+    std::vector<std::thread> threads;
+    auto process_node = [&](int tid) {
+        int id, length, begin_x, begin_y, end_x, end_y;
+        std::string intent_code;    
+        for (int i = tid; i < num_nodes; i += num_threads) {
+            std::istringstream iss(node_lines[i]);
+            iss >> id >> intent_code >> length >> begin_x >> begin_y >> end_x >> end_y;
+            nodes[i].write_node_info(id, str_to_ic.at(intent_code), length, begin_x, begin_y, end_x, end_y);
+        }
+    };
+    for (int tid = 0; tid < num_threads; tid ++) {
+        threads.emplace_back(process_node, tid);
+    }
+    for (int tid = 0; tid < num_threads; tid ++) {
+        threads[tid].join();
+    }
+
     std::getline(file, line);
     log() << "Finish reading nodes." << std::endl;
 
     // add children
+    log() << "Start reading edge lines. " << std::endl;
     for (int i = 0; i < num_nodes; i++) {
-        std::getline(file, line);
-        std::istringstream iss(line);
-        iss >> parent_id;
-        while (iss >> child_id) {
-            nodes[parent_id].add_child(&nodes[child_id]);
+        std::getline(file, edge_lines[i]);
+    }
+    threads.clear();
+    auto process_edge = [&](int tid) {
+        int parent_id, child_id;
+        for (int i = tid; i < num_nodes; i += num_threads) {
+            std::istringstream iss(edge_lines[i]);
+            iss >> parent_id;
+            while (iss >> child_id) {
+                nodes[parent_id].add_child(&nodes[child_id]);
+            }
         }
+    };
+    for (int tid = 0; tid < num_threads; tid ++) {
+        threads.emplace_back(process_edge, tid);
+    }
+    for (int tid = 0; tid < num_threads; tid ++) {
+        threads[tid].join();
     }
     log() << "Finish reading edges." << std::endl;
+
 
     file.close();
 }

@@ -94,6 +94,7 @@ public:
     void decrease_occupancy() {occupancy--;}
     void add_child(Node* child) {children.emplace_back(child);}
     void update_present_congestion_cost(double pres_factor);
+    void write_node_info(int id_, IntentCode intent_code_, int length_, int begin_x_, int begin_y_, int end_x_, int end_y_);
     void write_routing_info(Node* prev, double total_path_cost, double upstream_cost, int visited_stamp, int target_stamp);
     void set_prev(Node* prev_) {prev = prev_;}
     void set_accessible(bool accessible_) {accessible = accessible_;}
@@ -102,6 +103,7 @@ public:
 };
 class Device {
 private:
+    int num_threads = 32;
     void read(std::string device_file);
 public:
     int num_nodes;
