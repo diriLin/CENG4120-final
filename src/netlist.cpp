@@ -93,7 +93,12 @@ void Netlist::read(std::string netlist_file) {
     }
     log(LOG_INFO) << "Netlist file: " << netlist_file << std::endl;
 
+    int net_num = 0;
+
     std::string line;
+    std::getline(file, line);
+    std::istringstream iss(line);
+    iss >> net_num;
 
     int id, source_node_id, sink_node_id;
     std::string name;
@@ -107,6 +112,8 @@ void Netlist::read(std::string netlist_file) {
         }
         nets.emplace_back(id, name, source_node_id, sink_node_ids);
     }
+
+    assert_t(nets.size() == net_num);
 
     file.close();
     set_connections();

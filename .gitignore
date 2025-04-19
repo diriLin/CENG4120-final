@@ -4,6 +4,7 @@ build/
 output/
 tmp/
 release/
+vivado_project/
 
 # files
 xcvu3p.device
