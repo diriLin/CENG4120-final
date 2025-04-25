@@ -4,6 +4,8 @@ build/
 output/
 tmp/
 release/
+alpha/
+final/
 vivado_project/
 
 # files

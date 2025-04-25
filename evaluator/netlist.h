@@ -154,10 +154,10 @@ private:
     int check_total_wirelength_from_pips();
     void evaluate_pips();
 public:
+    bool quiet = true;
     std::vector<Net> nets;
     std::vector<Connection> connections;
     Netlist(Device& device_, std::string netlist_file): device(device_) {read(netlist_file);}
     void write(std::string output_file);
     void evaluate(std::string result_file);
-    
 };

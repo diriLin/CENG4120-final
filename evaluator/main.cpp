@@ -3,8 +3,8 @@
 #include "netlist.h"
 
 int main(int argc, char* argv[]) {
-    if (argc != 4) {
-        log(LOG_ERROR) << "Usage: ./eval <device> <netlist> <result>" << std::endl;
+    if (argc < 4 || argc > 5) {
+        log(LOG_ERROR) << "Usage: ./eval <device> <netlist> <result> [debug]" << std::endl;
         return 1;
     }
 
@@ -12,8 +12,17 @@ int main(int argc, char* argv[]) {
     std::string netlist_file = argv[2];
     std::string output_file = argv[3];
 
+    
+
     Device device(device_file);
     Netlist netlist(device, netlist_file);
+
+    if (argc > 4) {
+        std::string quiet = argv[4];
+        if (quiet == "debug") {
+            netlist.quiet = false;
+        }
+    }
 
     // check
     netlist.evaluate(output_file);

@@ -287,13 +287,30 @@ int Netlist::check_successfully_routed_nets_from_pips() {
         // check reachability of all sinks
         bool is_successfully_routed_net = true;
         Node* source_node = &device.nodes[net.get_source_node_id()];
+
+        if (!quiet && net.get_sink_node_ids().size() == 0) {
+            log() << "net " << net.get_id() << ": no sinks." << std::endl;
+        }
+
         for (int sink_node_id: net.get_sink_node_ids()) {
             bool is_successfully_routed_sink = false;
+            std::vector<int> path;
             Node* node = &device.nodes[sink_node_id];
             int watch_dog = 100000;
             while (watch_dog > 0) {
+                path.emplace_back(node->get_id());
+
                 if (child_to_parent.find(node) == child_to_parent.end()) {
                     // fail to find source node
+                    if (!quiet) {
+                        log(LOG_ERROR) << "net " << net.get_id() << ": fail to find source node." << std::endl;
+                        auto& ofs = log(LOG_ERROR) << "path starting from sink: ";
+                        for (int node_id: path) {
+                            ofs << node_id << " ";
+                        }
+                        ofs << std::endl;
+                    }
+                    
                     break;
                 }
                 Node* parent = child_to_parent.at(node);
@@ -306,6 +323,15 @@ int Netlist::check_successfully_routed_nets_from_pips() {
                 watch_dog--;
             }
             if (is_successfully_routed_sink == false) {
+                if (!quiet) {
+                    log(LOG_ERROR) << "net " << net.get_id() << ": fail to route sink node " << sink_node_id << "." << std::endl;
+                    auto& ofs = log(LOG_ERROR) << "path starting from sink: ";
+                    for (int node_id: path) {
+                        ofs << node_id << " ";
+                    }
+                    ofs << std::endl;
+                }
+                
                 is_successfully_routed_net = false;
                 break;
             }
