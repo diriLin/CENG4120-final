@@ -96,6 +96,9 @@ private:
     double xcenter;
     double ycenter;
 
+    // for eval
+    bool routed = false;
+
 public:
     Net() {};
     Net(int id_, std::string name_, int source_node_id_, std::vector<int>& sink_node_ids_):
@@ -115,6 +118,7 @@ public:
     double get_xcenter() {return xcenter;}
     double get_ycenter() {return ycenter;}
     int get_hpwl() {return 2 * (xmax - xmin + 1 + ymax - ymin + 1);}
+    int is_routed() {return routed;}
 
     void set_connection_ids(std::vector<int>& connection_ids_) {connection_ids = connection_ids_;}
     void set_xmin(int xmin_) {xmin = xmin_;}
@@ -126,6 +130,7 @@ public:
     void add_connection_id(int connection_id) {connection_ids.emplace_back(connection_id);}
     void add_pip(PIP pip) {pips.insert(pip);}
     void clear_pips() {pips.clear();}
+    void set_routed(bool routed_) {routed = routed_;}
 
     // Return: # connections using node (in this net)
     int count_user_connections(Node* node);

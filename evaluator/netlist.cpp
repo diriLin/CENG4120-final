@@ -338,6 +338,7 @@ int Netlist::check_successfully_routed_nets_from_pips() {
         }
 
         if (is_successfully_routed_net) {
+            net.set_routed(true);
             num_successfully_routed_nets++;
         }
     }
@@ -349,6 +350,7 @@ int Netlist::check_total_wirelength_from_pips() {
     int total_wirelength = 0;
     std::unordered_set<int> used_node_ids;
     for (Net& net: nets) {
+        if (!net.is_routed()) continue;
         auto& pips = net.get_pips();
         for (auto iter = pips.begin(); iter != pips.end(); iter++) {
             assert_t(iter->parent != nullptr);
