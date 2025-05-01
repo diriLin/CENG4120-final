@@ -83,36 +83,80 @@ void Device::read(std::string device_file) {
     log(LOG_INFO) << "Device file: " << device_file << std::endl;
     
     std::string line;
+    std::vector<std::string> node_lines;
+    std::vector<std::string> edge_lines;
+    int num_threads;
+    std::vector<std::thread> threads;
 
     // get #nodes
     std::getline(file, line);
     num_nodes = std::stoi(line);
     log() << "#nodes: " << num_nodes << std::endl;
-    nodes.reserve(num_nodes);
+    nodes.resize(num_nodes);
+    node_lines.resize(num_nodes);
+    edge_lines.resize(num_nodes);
 
     // create nodes
-    int id, length, begin_x, begin_y, end_x, end_y;
-    int parent_id, child_id;
-    std::string intent_code;
     for (int i = 0; i < num_nodes; i++) {
-        std::getline(file, line);
-        std::istringstream iss(line);
-        iss >> id >> intent_code >> length >> begin_x >> begin_y >> end_x >> end_y;
-        nodes.emplace_back(id, str_to_ic[intent_code], length, begin_x, begin_y, end_x, end_y);
+        std::getline(file, node_lines[i]);
     }
     std::getline(file, line);
-    log() << "Finish reading nodes." << std::endl;
+    log() << "Finish reading node lines." << std::endl;
+
+    auto parse_nodes = [&](int tid) {
+        int id, length, begin_x, begin_y, end_x, end_y;
+        std::string intent_code;
+        for (int i = tid; i < num_nodes; i += num_threads) {
+            std::istringstream iss(node_lines[i]);
+            iss >> id >> intent_code >> length >> begin_x >> begin_y >> end_x >> end_y;
+            nodes[i].reset(id, str_to_ic.at(intent_code), length, begin_x, begin_y, end_x, end_y);
+        }
+    };
+    threads.clear();
+    for (int tid = 0; tid < num_threads; tid++) {
+        threads.emplace_back(parse_nodes, tid);
+    }
+    for (int tid = 0; tid < num_threads; tid++) {
+        threads[tid].join();
+    }
+    // for (int i = 0; i < num_nodes; i++) {
+    //     std::istringstream iss(node_lines[i]);
+    //     iss >> id >> intent_code >> length >> begin_x >> begin_y >> end_x >> end_y;
+    //     nodes.emplace_back(id, str_to_ic[intent_code], length, begin_x, begin_y, end_x, end_y);
+    // }
+    log() << "Finish parsing nodes." << std::endl;
 
     // add children
     for (int i = 0; i < num_nodes; i++) {
-        std::getline(file, line);
-        std::istringstream iss(line);
-        iss >> parent_id;
-        while (iss >> child_id) {
-            nodes[parent_id].add_child(&nodes[child_id]);
-        }
+        std::getline(file, edge_lines[i]);
     }
-    log() << "Finish reading edges." << std::endl;
+    log() << "Finish reading edge lines." << std::endl;
+    auto parse_edges = [&](int tid) {
+        int parent_id, child_id;
+        for (int i = tid; i < num_nodes; i += num_threads) {
+            std::istringstream iss(edge_lines[i]);
+            iss >> parent_id;
+            while (iss >> child_id) {
+                nodes[parent_id].add_child(&nodes[child_id]);
+            }
+        }
+    };
+    threads.clear();
+    for (int tid = 0; tid < num_threads; tid++) {
+        threads.emplace_back(parse_edges, tid);
+    }
+    for (int tid = 0; tid < num_threads; tid++) {
+        threads[tid].join();
+    }
+
+    // for (int i = 0; i < num_nodes; i++) {
+    //     std::istringstream iss(edge_lines[i]);
+    //     iss >> parent_id;
+    //     while (iss >> child_id) {
+    //         nodes[parent_id].add_child(&nodes[child_id]);
+    //     }
+    // }
+    log() << "Finish parsing edges." << std::endl;
 
     file.close();
 }

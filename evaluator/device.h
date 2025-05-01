@@ -61,6 +61,19 @@ public:
         node_type = compute_node_type();
     }
 
+    void reset(int new_id, IntentCode new_intent_code, int new_length, int new_begin_x, int new_begin_y, int new_end_x, int new_end_y) {
+        id = new_id;
+        intent_code = new_intent_code;
+        length = new_length;
+        begin_x = new_begin_x;
+        begin_y = new_begin_y;
+        end_x = new_end_x;
+        end_y = new_end_y;
+
+        base_cost = compute_base_cost();
+        node_type = compute_node_type();
+    }
+
     int get_id() {return id;}
     int get_length() {return length;}
     int get_begin_x() {return begin_x;}
