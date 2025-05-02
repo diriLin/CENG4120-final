@@ -34,7 +34,7 @@ private:
     int begin_y;
     int end_x;
     int end_y;
-    std::vector<Node*> children;
+    // std::vector<Node*> children;
     NodeType node_type;
     int used_by_net_id = -1;
 
@@ -86,7 +86,7 @@ public:
     double get_upstream_cost() {return upstream_cost;}
     double get_present_congestion_cost() {return present_congestion_cost;}
     double get_historical_congestion_cost() {return historical_congestion_cost;}
-    std::vector<Node*>& get_children() {return children;}
+    // std::vector<Node*>& get_children() {return children;}
     Node* get_prev() {return prev;}
     NodeType get_node_type() {return node_type;}
     int get_used_by_net_id() {return used_by_net_id;}
@@ -105,7 +105,7 @@ public:
     void set_target(int connection_stamp) {target_stamp = connection_stamp;}
     void increase_occupancy() {occupancy++;}
     void decrease_occupancy() {occupancy--;}
-    void add_child(Node* child) {children.emplace_back(child);}
+    // void add_child(Node* child) {children.emplace_back(child);}
     void update_present_congestion_cost(double pres_factor);
     void write_routing_info(Node* prev, double total_path_cost, double upstream_cost, int visited_stamp, int target_stamp);
     void set_prev(Node* prev_) {prev = prev_;}
@@ -118,7 +118,9 @@ private:
     void read(std::string device_file);
 public:
     int num_nodes;
+    int num_threads = 8;
     std::vector<Node> nodes;
+    std::vector<std::vector<Node*>> children;
 
     std::unordered_map<std::string, IntentCode> str_to_ic = {
         {"NODE_LOCAL", IntentCode::NODE_LOCAL},

@@ -274,7 +274,7 @@ int Netlist::check_successfully_routed_nets_from_pips() {
             assert_t(iter->parent != nullptr);
             assert_t(iter->child != nullptr);
             bool find_child = false;
-            for (Node* child: iter->parent->get_children()) {
+            for (Node* child: device.children[iter->parent->get_id()]) {
                 if (child == iter->child) {
                     find_child = true;
                     break;

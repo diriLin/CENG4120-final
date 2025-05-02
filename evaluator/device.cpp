@@ -85,7 +85,6 @@ void Device::read(std::string device_file) {
     std::string line;
     std::vector<std::string> node_lines;
     std::vector<std::string> edge_lines;
-    int num_threads;
     std::vector<std::thread> threads;
 
     // get #nodes
@@ -93,6 +92,7 @@ void Device::read(std::string device_file) {
     num_nodes = std::stoi(line);
     log() << "#nodes: " << num_nodes << std::endl;
     nodes.resize(num_nodes);
+    children.resize(num_nodes);
     node_lines.resize(num_nodes);
     edge_lines.resize(num_nodes);
 
@@ -133,14 +133,17 @@ void Device::read(std::string device_file) {
     log() << "Finish reading edge lines." << std::endl;
     auto parse_edges = [&](int tid) {
         int parent_id, child_id;
+        std::istringstream iss;
         for (int i = tid; i < num_nodes; i += num_threads) {
-            std::istringstream iss(edge_lines[i]);
+            iss.clear();
+            iss.str(edge_lines[i]);
             iss >> parent_id;
             while (iss >> child_id) {
-                nodes[parent_id].add_child(&nodes[child_id]);
+                children[parent_id].emplace_back(&nodes[child_id]);
             }
         }
     };
+
     threads.clear();
     for (int tid = 0; tid < num_threads; tid++) {
         threads.emplace_back(parse_edges, tid);
